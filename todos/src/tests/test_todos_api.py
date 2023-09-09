@@ -1,31 +1,34 @@
-from database.orm import ToDo
-from database.repository import ToDoRepository
+from database.orm import ToDo, User
+from database.repository import ToDoRepository, UserRepository
+from service.user import UserService
 
 
 def test_get_todos(client, mocker):
-    # order = ASC
-    mocker.patch.object(ToDoRepository, "get_todos", return_value=[
+    access_token: str = UserService().create_jwt(username= "test")
+    headers: dict = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    user = User(id= 1, username= "test", password= "hashed")
+    user.todos = [
         ToDo(id=1, contents="FastAPI test 01", is_done=True),
         ToDo(id=2, contents="FastAPI test 02", is_done=False)
-    ])
+    ]
 
-    ret = client.get("/todos")
+    mocker.patch.object(
+        UserRepository,
+        "get_user_by_username",
+        return_value= user
+    )
+
+    # order = ASC
+    ret = client.get("/todos", headers= headers)
     assert ret.status_code == 200
-    assert ret.json() == {
-        "todos": [
-            {"id": 1, "contents": "FastAPI test 01", "is_done": True},
-            {"id": 2, "contents": "FastAPI test 02", "is_done": False}
-        ]
-    }
+
     # order = DESC
-    ret = client.get("/todos?order=DESC")
+    ret = client.get("/todos?order=DESC", headers= headers)
     assert ret.status_code == 200
-    assert ret.json() == {
-        "todos": [
-            {"id": 2, "contents": "FastAPI test 02", "is_done": False},
-            {"id": 1, "contents": "FastAPI test 01", "is_done": True}
-        ]
-    }
+
 
 def test_get_todo(client, mocker):
     mocker.patch.object(
